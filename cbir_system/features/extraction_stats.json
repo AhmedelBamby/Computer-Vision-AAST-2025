@@ -1,0 +1,11 @@
+{
+  "total_images": 6552,
+  "successful": 6552,
+  "failed": 0,
+  "processing_time_seconds": 7621.21866774559,
+  "images_per_second": 0.8597050269308343,
+  "processes_used": 4,
+  "features_per_image": 313,
+  "dataset_path": "dataset",
+  "timestamp": "2025-10-02 16:10:07"
+}

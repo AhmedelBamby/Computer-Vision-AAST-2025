@@ -6,3 +6,5 @@ matplotlib>=3.10.0
 scikit-learn>=1.7.0
 seaborn>=0.13.0
 pandas>=2.3.0
+requests>=2.25.0
+zipfile36>=0.1.3

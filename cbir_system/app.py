@@ -109,21 +109,35 @@ def display_similarity_results(results, method_name, dataset_path):
         col = cols[idx % 3]
         
         with col:
-            # Load and display image
+            # Handle the new dataset structure (category/image.jpg)
             image_path = Path(dataset_path) / image_name
             if image_path.exists():
-                image = Image.open(image_path)
-                st.image(image, caption=f"Rank {idx + 1}", use_column_width=True)
-                
-                # Display similarity score
-                if method_name == 'cosine':
-                    st.markdown(f'<p class="similarity-score">Cosine Similarity: {score:.4f}</p>', 
-                              unsafe_allow_html=True)
-                else:
-                    st.markdown(f'<p class="similarity-score">{method_name.title()} Distance: {score:.4f}</p>', 
-                              unsafe_allow_html=True)
-                
-                st.markdown(f"**Image:** {image_name}")
+                try:
+                    image = Image.open(image_path)
+                    # Resize for consistent display
+                    image = image.resize((200, 200))
+                    st.image(image, caption=f"Rank {idx + 1}", width=200)
+                    
+                    # Display similarity score
+                    if method_name == 'cosine':
+                        st.markdown(f'<p class="similarity-score">Cosine Similarity: {score:.4f}</p>', 
+                                  unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<p class="similarity-score">{method_name.title()} Distance: {score:.4f}</p>', 
+                                  unsafe_allow_html=True)
+                    
+                    # Extract category and image info
+                    parts = Path(image_name).parts
+                    if len(parts) >= 2:
+                        category = parts[0]
+                        image_file = parts[1]
+                        st.markdown(f"**Category:** {category}")
+                        st.markdown(f"**Image:** {image_file}")
+                    else:
+                        st.markdown(f"**Image:** {image_name}")
+                        
+                except Exception as e:
+                    st.error(f"Error loading image: {e}")
             else:
                 st.error(f"Image not found: {image_name}")
 
@@ -185,8 +199,12 @@ def main():
     
     st.markdown("""
     This Content-Based Image Retrieval (CBIR) system allows you to upload a flower image 
-    and find the most similar images from our dataset using different similarity methods.
+    and find the most similar images from our **Kaggle flower dataset** (102 categories, 6000+ images) 
+    using different similarity methods.
     """)
+    
+    # Add dataset info banner
+    st.info("🎯 **New Dataset**: Now using the comprehensive Kaggle flower dataset with 102 different flower categories!")
     
     # Load CBIR system
     cbir_system = load_cbir_system()
@@ -227,6 +245,13 @@ def main():
     st.sidebar.markdown("## Dataset Information")
     dataset_images = cbir_system.get_database_image_names()
     st.sidebar.markdown(f"**Total images in database:** {len(dataset_images)}")
+    
+    # Count categories
+    dataset_path = Path("dataset")
+    if dataset_path.exists():
+        categories = [d.name for d in dataset_path.iterdir() if d.is_dir()]
+        st.sidebar.markdown(f"**Flower categories:** {len(categories)}")
+    
     st.sidebar.markdown("**Available methods:** Cosine Similarity, Euclidean Distance, Manhattan Distance")
     
     # Main content area
@@ -311,21 +336,64 @@ def main():
             st.info("Upload an image and click 'Search Similar Images' to see results.")
     
     # Dataset preview
-    with st.expander("📂 Dataset Preview", expanded=False):
-        st.markdown("### Sample Images from Dataset")
+    with st.expander("📂 Kaggle Flower Dataset Preview", expanded=False):
+        st.markdown("### Sample Images from Different Categories")
         
         dataset_path = Path("dataset")
-        sample_images = list(dataset_path.glob("*.jpg"))[:8]  # Show first 8 images
-        
-        if sample_images:
-            cols = st.columns(4)
-            for i, img_path in enumerate(sample_images):
-                col = cols[i % 4]
-                with col:
-                    image = Image.open(img_path)
-                    st.image(image, caption=img_path.name, use_column_width=True)
+        if dataset_path.exists():
+            # Get all category directories
+            categories = [d for d in dataset_path.iterdir() if d.is_dir()]
+            categories = sorted(categories, key=lambda x: int(x.name))[:12]  # Show first 12 categories
+            
+            if categories:
+                st.markdown(f"**Showing sample images from {len(categories)} categories (out of 102 total)**")
+                
+                # Create a grid layout
+                cols = st.columns(4)
+                
+                for i, category_dir in enumerate(categories):
+                    col = cols[i % 4]
+                    
+                    # Get first image from this category
+                    images = list(category_dir.glob("*.jpg"))
+                    if images:
+                        with col:
+                            try:
+                                image = Image.open(images[0])
+                                # Resize for display
+                                image = image.resize((150, 150))
+                                st.image(image, caption=f"Category {category_dir.name}", width=150)
+                            except Exception as e:
+                                st.write(f"Category {category_dir.name}: Error loading image")
+                    
+                    # Show category stats
+                    if i < 8:  # Show stats for first 8 categories
+                        with col:
+                            st.write(f"**{len(images)} images**")
+                
+                # Dataset statistics
+                st.markdown("---")
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    total_categories = len([d for d in dataset_path.iterdir() if d.is_dir()])
+                    st.metric("Total Categories", total_categories)
+                
+                with col2:
+                    # Count total images (this might be slow for large datasets)
+                    if 'total_image_count' not in st.session_state:
+                        total_images = sum(len(list(cat.glob("*.jpg"))) for cat in dataset_path.iterdir() if cat.is_dir())
+                        st.session_state['total_image_count'] = total_images
+                    st.metric("Total Images", st.session_state['total_image_count'])
+                
+                with col3:
+                    avg_per_category = st.session_state.get('total_image_count', 0) // total_categories if total_categories > 0 else 0
+                    st.metric("Avg Images/Category", avg_per_category)
+            
+            else:
+                st.warning("No category directories found in dataset.")
         else:
-            st.warning("No images found in dataset directory.")
+            st.error("Dataset directory not found. Please download the dataset first.")
     
     # Footer
     st.markdown("---")
