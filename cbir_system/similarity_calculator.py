@@ -61,7 +61,7 @@ class SimilarityCalculator:
         Returns:
             float: manhattan distance (lower is more similar)
         """
-        distance = manhattan(query_features, database_features)
+        distance = np.sum(np.abs(query_features - database_features))
         return distance
     
     def normalize_features(self, features):

@@ -1,12 +1,15 @@
 """
 Feature extraction module for CBIR system
 Extracts color histograms, texture features, and other visual features from images
+using multiprocessing (ProcessPoolExecutor)
 """
 import cv2
 import numpy as np
-from PIL import Image
 import os
 from pathlib import Path
+import concurrent.futures
+import time
+import json
 
 class FeatureExtractor:
     """Extract visual features from images for content-based image retrieval"""
@@ -20,77 +23,37 @@ class FeatureExtractor:
         }
     
     def extract_color_histogram(self, image, bins=(8, 8, 8)):
-        """
-        Extract RGB color histogram features
-        
-        Args:
-            image: numpy array of the image (H, W, 3)
-            bins: tuple of number of bins for each channel
-            
-        Returns:
-            numpy array: flattened histogram features
-        """
-        # Calculate histogram for each channel
+        """Extract RGB color histogram features"""
         hist_r = cv2.calcHist([image], [0], None, [bins[0]], [0, 256])
         hist_g = cv2.calcHist([image], [1], None, [bins[1]], [0, 256])
         hist_b = cv2.calcHist([image], [2], None, [bins[2]], [0, 256])
         
-        # Normalize histograms
         hist_r = hist_r.flatten() / np.sum(hist_r)
         hist_g = hist_g.flatten() / np.sum(hist_g)
         hist_b = hist_b.flatten() / np.sum(hist_b)
         
-        # Concatenate all histograms
-        color_hist = np.concatenate([hist_r, hist_g, hist_b])
-        return color_hist
+        return np.concatenate([hist_r, hist_g, hist_b])
     
     def extract_hsv_histogram(self, image, bins=(8, 8, 8)):
-        """
-        Extract HSV color histogram features
-        
-        Args:
-            image: numpy array of the image (H, W, 3) in RGB format
-            bins: tuple of number of bins for each channel
-            
-        Returns:
-            numpy array: flattened HSV histogram features
-        """
-        # Convert RGB to HSV
+        """Extract HSV color histogram features"""
         hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
-        
-        # Calculate histogram for each channel
         hist_h = cv2.calcHist([hsv_image], [0], None, [bins[0]], [0, 180])
         hist_s = cv2.calcHist([hsv_image], [1], None, [bins[1]], [0, 256])
         hist_v = cv2.calcHist([hsv_image], [2], None, [bins[2]], [0, 256])
         
-        # Normalize histograms
         hist_h = hist_h.flatten() / np.sum(hist_h)
         hist_s = hist_s.flatten() / np.sum(hist_s)
         hist_v = hist_v.flatten() / np.sum(hist_v)
         
-        # Concatenate all histograms
-        hsv_hist = np.concatenate([hist_h, hist_s, hist_v])
-        return hsv_hist
+        return np.concatenate([hist_h, hist_s, hist_v])
     
     def extract_texture_lbp(self, image, radius=1, n_points=8):
-        """
-        Extract Local Binary Pattern (LBP) texture features
-        
-        Args:
-            image: numpy array of the image
-            radius: radius of the LBP operator
-            n_points: number of points in the LBP operator
-            
-        Returns:
-            numpy array: LBP histogram features
-        """
-        # Convert to grayscale if needed
+        """Extract Local Binary Pattern (LBP) texture features"""
         if len(image.shape) == 3:
             gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         else:
             gray = image
         
-        # Simple LBP implementation
         height, width = gray.shape
         lbp = np.zeros_like(gray)
         
@@ -98,138 +61,150 @@ class FeatureExtractor:
             for j in range(radius, width - radius):
                 center = gray[i, j]
                 code = 0
-                
-                # Sample points around the center
                 for k in range(n_points):
                     angle = 2 * np.pi * k / n_points
                     x = int(i + radius * np.cos(angle))
                     y = int(j + radius * np.sin(angle))
-                    
                     if x < height and y < width and gray[x, y] >= center:
                         code |= (1 << k)
-                
                 lbp[i, j] = code
         
-        # Calculate histogram
         hist, _ = np.histogram(lbp.ravel(), bins=2**n_points, range=(0, 2**n_points))
         hist = hist.astype(float)
-        hist = hist / np.sum(hist)  # Normalize
-        
-        return hist
+        return hist / np.sum(hist)
     
     def extract_color_moments(self, image):
-        """
-        Extract color moments (mean, standard deviation, skewness)
-        
-        Args:
-            image: numpy array of the image (H, W, 3)
-            
-        Returns:
-            numpy array: color moments features
-        """
+        """Extract color moments (mean, std, skewness)"""
         moments = []
-        
-        for channel in range(3):  # RGB channels
+        for channel in range(3):
             ch = image[:, :, channel].flatten()
-            
-            # First moment (mean)
             mean = np.mean(ch)
-            
-            # Second moment (standard deviation)
             std = np.std(ch)
-            
-            # Third moment (skewness)
             skewness = np.mean(((ch - mean) / std) ** 3) if std > 0 else 0
-            
             moments.extend([mean, std, skewness])
-        
         return np.array(moments)
     
     def extract_all_features(self, image_path):
-        """
-        Extract all features from an image
-        
-        Args:
-            image_path: path to the image file
-            
-        Returns:
-            dict: dictionary containing all extracted features
-        """
-        # Load image
+        """Extract all features from an image"""
         image = cv2.imread(str(image_path))
         if image is None:
             raise ValueError(f"Could not load image: {image_path}")
         
-        # Convert BGR to RGB
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        
-        # Resize image for consistent processing
         image = cv2.resize(image, (256, 256))
         
-        features = {}
+        features = {
+            'color_histogram': self.extract_color_histogram(image),
+            'hsv_histogram': self.extract_hsv_histogram(image),
+            'texture_lbp': self.extract_texture_lbp(image),
+            'color_moments': self.extract_color_moments(image)
+        }
         
-        # Extract different types of features
-        features['color_histogram'] = self.extract_color_histogram(image)
-        features['hsv_histogram'] = self.extract_hsv_histogram(image)
-        features['texture_lbp'] = self.extract_texture_lbp(image)
-        features['color_moments'] = self.extract_color_moments(image)
-        
-        # Combine all features into a single vector
         combined_features = np.concatenate([
             features['color_histogram'],
-            features['hsv_histogram'], 
+            features['hsv_histogram'],
             features['texture_lbp'],
             features['color_moments']
         ])
-        
         features['combined'] = combined_features
-        
         return features
 
-def extract_features_from_dataset(dataset_path, output_path):
-    """
-    Extract features from all images in the dataset
-    
-    Args:
-        dataset_path: path to the dataset directory
-        output_path: path to save the extracted features
-    """
+
+def process_single_image(image_path, dataset_path):
+    """Standalone worker function for multiprocessing"""
     extractor = FeatureExtractor()
+    features = extractor.extract_all_features(image_path)
+    relative_path = image_path.relative_to(dataset_path)
+    key = str(relative_path).replace("\\", "/")
+    return key, features
+
+
+def extract_features_from_dataset(dataset_path, output_path, max_workers=4):
+    """
+    Extract features from all images in the dataset using multiprocessing
+    """
     dataset_path = Path(dataset_path)
     output_path = Path(output_path)
     output_path.mkdir(exist_ok=True)
     
+    print(f"🔍 Scanning dataset: {dataset_path}")
+    image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff'}
+    image_files = [
+        Path(root) / file
+        for root, _, files in os.walk(dataset_path)
+        for file in files
+        if Path(file).suffix.lower() in image_extensions
+    ]
+    
+    print(f"🔍 Found {len(image_files)} images in dataset")
+    if not image_files:
+        print("❌ No images found in dataset!")
+        return {}
+    
     features_db = {}
+    successful = 0
+    failed = 0
     
-    # Get all image files
-    image_extensions = ['.jpg', '.jpeg', '.png', '.bmp', '.tiff']
-    image_files = []
-    for ext in image_extensions:
-        image_files.extend(dataset_path.glob(f'*{ext}'))
-        image_files.extend(dataset_path.glob(f'*{ext.upper()}'))
+    print(f"🚀 Starting feature extraction with {max_workers} processes...")
+    start_time = time.time()
     
-    print(f"Found {len(image_files)} images in dataset")
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(process_single_image, img, dataset_path): img for img in image_files}
+        for i, future in enumerate(concurrent.futures.as_completed(futures), 1):
+            try:
+                key, features = future.result()
+                features_db[key] = features
+                successful += 1
+                if i % 100 == 0:
+                    print(f"📊 Progress: {i}/{len(image_files)} ({(i/len(image_files))*100:.1f}%)")
+                elif i % 10 == 0:
+                    print(".", end="", flush=True)
+            except Exception as e:
+                failed += 1
+                if failed <= 10:
+                    print(f"\n❌ Error: {e}")
     
-    for image_path in image_files:
-        try:
-            print(f"Processing {image_path.name}...")
-            features = extractor.extract_all_features(image_path)
-            features_db[image_path.name] = features
-            
-        except Exception as e:
-            print(f"Error processing {image_path}: {e}")
+    end_time = time.time()
+    processing_time = end_time - start_time
     
-    # Save features database
-    np.save(output_path / 'features_db.npy', features_db)
-    print(f"Features database saved to {output_path / 'features_db.npy'}")
-    print(f"Processed {len(features_db)} images")
+    # Save results
+    features_db_path = output_path / "features_db.npy"
+    np.save(features_db_path, features_db)
+    
+    stats = {
+        "total_images": len(image_files),
+        "successful": successful,
+        "failed": failed,
+        "processing_time_seconds": processing_time,
+        "images_per_second": successful / processing_time if processing_time > 0 else 0,
+        "processes_used": max_workers,
+        "features_per_image": len(next(iter(features_db.values()))['combined']) if features_db else 0,
+        "dataset_path": str(dataset_path),
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+    }
+    
+    stats_path = output_path / "extraction_stats.json"
+    with open(stats_path, "w") as f:
+        json.dump(stats, f, indent=2)
+    
+    print(f"\n📊 Feature Extraction Summary:")
+    print(f"✅ Successfully processed: {successful:,}")
+    print(f"❌ Failed: {failed:,}")
+    print(f"⏱️ Total time: {processing_time:.2f} seconds")
+    print(f"🚀 Speed: {successful/processing_time:.2f} images/sec")
+    print(f"🧵 Processes used: {max_workers}")
+    print(f"💾 Features DB saved: {features_db_path}")
+    print(f"📈 Stats saved: {stats_path}")
     
     return features_db
 
+
 if __name__ == "__main__":
-    # Extract features from the dataset
     dataset_path = "dataset"
-    output_path = "features" 
+    output_path = "features"
     
-    features_db = extract_features_from_dataset(dataset_path, output_path)
-    print("Feature extraction completed!")
+    print("🌸 CBIR Feature Extraction with Multiprocessing")
+    print("=" * 60)
+    
+    features_db = extract_features_from_dataset(dataset_path, output_path, max_workers=4)
+    print("\n🎉 Feature extraction completed!")
