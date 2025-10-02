@@ -8,9 +8,25 @@ A powerful Content-Based Image Retrieval system that enables users to upload flo
 
 **Watch the system in action:**
 
-https://github.com/user-attachments/assets/streamlit-app-2025-10-02-19-10-45.webm
+<div align="center">
+
+https://github.com/user-attachments/assets/a7f4b4e3-8c53-4569-8b69-3cc8c5c5c5dc
+
+*Click to play the demo video*
+
+**🎬 [Download Full Demo Video](./proof_video/streamlit-app-2025-10-02-19-10-45.webm)**
+
+</div>
 
 *The video demonstrates the complete CBIR workflow: uploading a flower image, selecting similarity methods, and viewing results across different algorithms.*
+
+### 📸 System Preview
+
+<div align="center">
+<img src="./proof_video/download.jpg" alt="CBIR System Interface" width="800">
+<br>
+<em>CBIR System Web Interface - Upload and search for similar flower images</em>
+</div>
 
 ## 🚀 Key Features
 
