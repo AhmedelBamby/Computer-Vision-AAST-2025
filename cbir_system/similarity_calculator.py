@@ -4,7 +4,7 @@ Implements different distance metrics: Cosine Similarity, Manhattan Distance, Eu
 """
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from scipy.spatial.distance import euclidean, manhattan
+from scipy.spatial.distance import euclidean
 from pathlib import Path
 
 class SimilarityCalculator:
