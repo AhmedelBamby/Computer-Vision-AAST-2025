@@ -2,6 +2,7 @@
 
 A comprehensive Content-Based Image Retrieval system that allows users to upload flower images and retrieve the top 3 most similar images from a database using multiple similarity methods.
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/AhmedelBamby/Computer-Vision-AAST-2025?quickstart=1)
 ## 🚀 Features
 
 - **Image Upload**: Upload flower images through an intuitive web interface
