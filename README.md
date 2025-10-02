@@ -18,7 +18,7 @@ https://github.com/user-attachments/assets/streamlit-app-demo.mp4
 
 </div>
 
-*The video demonstrates the complete CBIR workflow: uploading a flower image, selecting similarity methods, and viewing results across different algorithms. The video is optimized (33MB) for fast loading and GitHub compatibility.*
+*The video demonstrates the complete CBIR workflow: uploading a flower image, selecting similarity methods, and viewing results across different algorithms.*
 
 ### 📸 System Preview
 
