@@ -10,11 +10,11 @@ A powerful Content-Based Image Retrieval system that enables users to upload flo
 
 <div align="center">
 
-https://github.com/user-attachments/assets/a7f4b4e3-8c53-4569-8b69-3cc8c5c5c5dc
+https://github.com/user-attachments/assets/streamlit-app-demo.mp4
 
 *Click to play the demo video*
 
-**🎬 [Download Full Demo Video](./proof_video/streamlit-app-2025-10-02-19-10-45.webm)**
+**🎬 [Download Full Demo Video](./proof_video/streamlit-app-demo.mp4)**
 
 </div>
 
