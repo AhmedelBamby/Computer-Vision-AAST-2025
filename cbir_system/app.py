@@ -12,6 +12,122 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from feature_extractor import FeatureExtractor
 from similarity_calculator import CBIRSystem
+from visualizer import VectorVisualizer, create_visualization_summary
+
+# Flower class names mapping
+FLOWER_CLASSES = {
+    "1": "pink primrose",
+    "2": "hard-leaved pocket orchid",
+    "3": "canterbury bells",
+    "4": "sweet pea",
+    "5": "english marigold",
+    "6": "tiger lily",
+    "7": "moon orchid",
+    "8": "bird of paradise",
+    "9": "monkshood",
+    "10": "globe thistle",
+    "11": "snapdragon",
+    "12": "colt's foot",
+    "13": "king protea",
+    "14": "spear thistle",
+    "15": "yellow iris",
+    "16": "globe-flower",
+    "17": "purple coneflower",
+    "18": "peruvian lily",
+    "19": "balloon flower",
+    "20": "giant white arum lily",
+    "21": "fire lily",
+    "22": "pincushion flower",
+    "23": "fritillary",
+    "24": "red ginger",
+    "25": "grape hyacinth",
+    "26": "corn poppy",
+    "27": "prince of wales feathers",
+    "28": "stemless gentian",
+    "29": "artichoke",
+    "30": "sweet william",
+    "31": "carnation",
+    "32": "garden phlox",
+    "33": "love in the mist",
+    "34": "mexican aster",
+    "35": "alpine sea holly",
+    "36": "ruby-lipped cattleya",
+    "37": "cape flower",
+    "38": "great masterwort",
+    "39": "siam tulip",
+    "40": "lenten rose",
+    "41": "barbeton daisy",
+    "42": "daffodil",
+    "43": "sword lily",
+    "44": "poinsettia",
+    "45": "bolero deep blue",
+    "46": "wallflower",
+    "47": "marigold",
+    "48": "buttercup",
+    "49": "oxeye daisy",
+    "50": "common dandelion",
+    "51": "petunia",
+    "52": "wild pansy",
+    "53": "primula",
+    "54": "sunflower",
+    "55": "pelargonium",
+    "56": "bishop of llandaff",
+    "57": "gaura",
+    "58": "geranium",
+    "59": "orange dahlia",
+    "60": "pink-yellow dahlia",
+    "61": "cautleya spicata",
+    "62": "japanese anemone",
+    "63": "black-eyed susan",
+    "64": "silverbush",
+    "65": "californian poppy",
+    "66": "osteospermum",
+    "67": "spring crocus",
+    "68": "bearded iris",
+    "69": "windflower",
+    "70": "tree poppy",
+    "71": "gazania",
+    "72": "azalea",
+    "73": "water lily",
+    "74": "rose",
+    "75": "thorn apple",
+    "76": "morning glory",
+    "77": "passion flower",
+    "78": "lotus lotus",
+    "79": "toad lily",
+    "80": "anthurium",
+    "81": "frangipani",
+    "82": "clematis",
+    "83": "hibiscus",
+    "84": "columbine",
+    "85": "desert-rose",
+    "86": "tree mallow",
+    "87": "magnolia",
+    "88": "cyclamen",
+    "89": "watercress",
+    "90": "canna lily",
+    "91": "hippeastrum",
+    "92": "bee balm",
+    "93": "ball moss",
+    "94": "foxglove",
+    "95": "bougainvillea",
+    "96": "camellia",
+    "97": "mallow",
+    "98": "mexican petunia",
+    "99": "bromelia",
+    "100": "blanket flower",
+    "101": "trumpet creeper",
+    "102": "blackberry lily"
+}
+
+def get_flower_name(category_id):
+    """Get flower name from category ID, with fallback to category number."""
+    try:
+        # Ensure category_id is a string
+        category_str = str(category_id)
+        return FLOWER_CLASSES.get(category_str, f"Category {category_str}")
+    except:
+        return f"Category {category_id}"
 
 # Configure Streamlit page
 st.set_page_config(
@@ -130,8 +246,9 @@ def display_similarity_results(results, method_name, dataset_path):
                     parts = Path(image_name).parts
                     if len(parts) >= 2:
                         category = parts[0]
+                        flower_name = get_flower_name(category)
                         image_file = parts[1]
-                        st.markdown(f"**Category:** {category}")
+                        st.markdown(f"**Category:** {flower_name}")
                         st.markdown(f"**Image:** {image_file}")
                     else:
                         st.markdown(f"**Image:** {image_name}")
@@ -188,7 +305,7 @@ def create_comparison_chart(results, selected_methods):
         with col2:
             st.markdown("#### Top 3 Images Comparison")
             pivot_df = df.pivot(index='Image', columns='Method', values='Score')
-            st.dataframe(pivot_df, use_container_width=True)
+            st.dataframe(pivot_df, width='stretch')
 
 def main():
     """Main Streamlit application"""
@@ -268,7 +385,7 @@ def main():
         if uploaded_file is not None:
             # Display uploaded image
             image = Image.open(uploaded_file)
-            st.image(image, caption="Query Image", use_column_width=True)
+            st.image(image, caption="Query Image", width='stretch')
             
             # Process image and extract features
             with st.spinner("Processing image and extracting features..."):
@@ -279,6 +396,9 @@ def main():
                         # Extract features from uploaded image
                         features = feature_extractor.extract_all_features(temp_path)
                         query_features = features['combined']
+                        
+                        # Store query features in session state
+                        st.session_state['query_features'] = query_features
                         
                         # Clean up temporary file
                         if os.path.exists(temp_path):
@@ -331,6 +451,176 @@ def main():
             if len(methods) > 1:
                 with st.expander("📊 Method Comparison Analysis", expanded=False):
                     create_comparison_chart(results, methods)
+            
+            # Vector Visualization Section
+            if 'query_features' in locals() or 'query_features' in st.session_state:
+                st.markdown("---")
+                st.markdown("### 🎯 Vector Analysis & Similarity Visualization")
+                
+                # Store query features in session state if not already there
+                if 'query_features' in locals() and 'query_features' not in st.session_state:
+                    st.session_state['query_features'] = query_features
+                
+                current_query_features = st.session_state.get('query_features')
+                
+                if current_query_features is not None:
+                    # Initialize visualizer
+                    visualizer = VectorVisualizer(feature_extractor)
+                    
+                    # Prepare data for visualization
+                    method_results = {}
+                    for method in methods:
+                        if method in results:
+                            # Extract features and distances from results
+                            result_data = results[method]
+                            features_list = []
+                            distances_list = []
+                            names_list = []
+                            
+                            for image_name, distance in result_data[:top_k]:
+                                # Get features for this image
+                                image_path = Path("dataset") / image_name
+                                if image_path.exists():
+                                    try:
+                                        img_features = feature_extractor.extract_all_features(str(image_path))
+                                        features_list.append(img_features['combined'])
+                                        distances_list.append(distance)
+                                        
+                                        # Get flower name
+                                        parts = Path(image_name).parts
+                                        if len(parts) >= 2:
+                                            category = parts[0]
+                                            flower_name = get_flower_name(category)
+                                            names_list.append(flower_name)
+                                        else:
+                                            names_list.append(image_name)
+                                    except Exception as e:
+                                        continue
+                            
+                            if features_list:
+                                method_results[method] = (features_list, distances_list, names_list)
+                    
+                    # Create visualization tabs
+                    viz_tabs = st.tabs(["📈 Vector Space", "📊 Distance Analysis", "🔬 Multi-Method Comparison", "🔥 Feature Heatmap"])
+                    
+                    with viz_tabs[0]:
+                        st.markdown("#### Feature Vector Visualization in 2D Space")
+                        st.info("This plot shows how images are positioned in feature space using dimensionality reduction (PCA). Closer points indicate more similar images.")
+                        
+                        # Reduction method selector
+                        reduction_method = st.selectbox(
+                            "Dimensionality Reduction Method:",
+                            ["PCA", "tsne"],
+                            help="PCA preserves global structure, t-SNE better for local neighborhoods"
+                        )
+                        
+                        # Create vector plots for each method
+                        for method in methods:
+                            if method in method_results:
+                                features, distances, names = method_results[method]
+                                
+                                st.markdown(f"**{method.title()} Method**")
+                                fig = visualizer.create_vector_scatter_plot(
+                                    current_query_features, features, 
+                                    retrieved_names=names, method_name=method,
+                                    reduction_method=reduction_method.lower()
+                                )
+                                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': True})
+                    
+                    with viz_tabs[1]:
+                        st.markdown("#### Distance and Similarity Analysis")
+                        st.info("Detailed analysis of how similarity scores relate to feature vectors and geometric relationships.")
+                        
+                        for method in methods:
+                            if method in method_results:
+                                features, distances, names = method_results[method]
+                                
+                                st.markdown(f"**{method.title()} Method Analysis**")
+                                fig = visualizer.create_distance_visualization(
+                                    current_query_features, features, distances, method, names
+                                )
+                                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': True})
+                                
+                                # Add interpretation
+                                if method.lower() == 'cosine':
+                                    st.markdown("""
+                                    **Cosine Similarity Interpretation:**
+                                    - Values closer to 1.0 indicate higher similarity
+                                    - Measures the angle between feature vectors
+                                    - Insensitive to vector magnitude
+                                    """)
+                                elif method.lower() == 'euclidean':
+                                    st.markdown("""
+                                    **Euclidean Distance Interpretation:**
+                                    - Lower values indicate higher similarity
+                                    - Measures straight-line distance in feature space
+                                    - Sensitive to all feature dimensions equally
+                                    """)
+                                elif method.lower() == 'manhattan':
+                                    st.markdown("""
+                                    **Manhattan Distance Interpretation:**
+                                    - Lower values indicate higher similarity
+                                    - Sum of absolute differences in each dimension
+                                    - More robust to outliers than Euclidean
+                                    """)
+                    
+                    with viz_tabs[2]:
+                        if len(methods) > 1:
+                            st.markdown("#### Multi-Method Comparison Dashboard")
+                            st.info("Compare how different similarity methods rank and score the same images.")
+                            
+                            fig = visualizer.create_multi_method_comparison(
+                                current_query_features, method_results, methods
+                            )
+                            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': True})
+                            
+                            # Method comparison insights
+                            st.markdown("#### 🔍 Method Insights")
+                            col1, col2, col3 = st.columns(3)
+                            
+                            with col1:
+                                st.markdown("**Cosine Similarity**")
+                                st.markdown("- Best for: Style and texture matching")
+                                st.markdown("- Focus: Shape of feature vector")
+                                st.markdown("- Robust to: Lighting variations")
+                            
+                            with col2:
+                                st.markdown("**Euclidean Distance**")
+                                st.markdown("- Best for: Overall feature similarity")
+                                st.markdown("- Focus: Magnitude and direction")
+                                st.markdown("- Sensitive to: All feature changes")
+                            
+                            with col3:
+                                st.markdown("**Manhattan Distance**")
+                                st.markdown("- Best for: Color-based matching")
+                                st.markdown("- Focus: Individual feature differences")
+                                st.markdown("- Robust to: Outlier features")
+                        else:
+                            st.info("Select multiple similarity methods to see comparison analysis.")
+                    
+                    with viz_tabs[3]:
+                        st.markdown("#### Feature Vector Heatmap")
+                        st.info("Raw feature values comparison between query and retrieved images.")
+                        
+                        # Use primary method for heatmap
+                        primary_method = methods[0]
+                        if primary_method in method_results:
+                            features, _, names = method_results[primary_method]
+                            
+                            fig = visualizer.create_feature_heatmap(
+                                current_query_features, features, names
+                            )
+                            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': True})
+                            
+                            st.markdown("""
+                            **Feature Heatmap Interpretation:**
+                            - Each row represents an image (query + retrieved)
+                            - Each column represents a feature dimension
+                            - Color intensity shows feature values
+                            - Similar patterns indicate similar images
+                            """)
+                else:
+                    st.warning("Query features not available for visualization. Please search for images first.")
         
         else:
             st.info("Upload an image and click 'Search Similar Images' to see results.")
@@ -362,9 +652,11 @@ def main():
                                 image = Image.open(images[0])
                                 # Resize for display
                                 image = image.resize((150, 150))
-                                st.image(image, caption=f"Category {category_dir.name}", width=150)
+                                flower_name = get_flower_name(category_dir.name)
+                                st.image(image, caption=flower_name, width=150)
                             except Exception as e:
-                                st.write(f"Category {category_dir.name}: Error loading image")
+                                flower_name = get_flower_name(category_dir.name)
+                                st.write(f"{flower_name}: Error loading image")
                     
                     # Show category stats
                     if i < 8:  # Show stats for first 8 categories
