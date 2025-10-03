@@ -30,20 +30,12 @@ A powerful Content-Based Image Retrieval system that enables users to upload flo
 **🎬 [Watch Full Demo Video: CBIR System with Vector Visualization](./proof_video/Cbir%20System(1).mp4)**  
 *✨ Latest enhanced demo showcasing the complete system with breakthrough vector visualizations, mathematical insights, and interactive educational features*
 
-**🎬 [Alternative Demo Video: Original Implementation](./proof_video/streamlit-app-demo.mp4)**  
+**🎬 [Alternative Demo Video: Original Implementation](./workspaces/Computer-Vision-AAST-2025/proof_video/Thumbnails Pictures/CBIRSYSGIF.gif**  
 *📹 Original system demonstration showing core CBIR functionality and basic similarity search*
 
 </div>
 
 *The enhanced demo videos showcase the complete CBIR workflow evolution: from basic image upload and similarity search to **revolutionary vector visualization analysis**. The latest demo specifically highlights interactive mathematical visualizations including PCA/t-SNE feature space plots, comprehensive distance analysis dashboards, multi-method algorithm comparisons, and feature pattern heatmaps that transform abstract similarity mathematics into visual understanding and educational exploration.*
-
-### 📸 System Interface Preview
-
-<div align="center">
-<img src="./proof_video/download.jpg" alt="CBIR System Interface" width="800">
-<br>
-<em>CBIR System Web Interface - Advanced flower image retrieval with educational insights</em>
-</div>
 
 ## 🚀 Key Features
 
